@@ -1,6 +1,14 @@
+"""
+Core legal review pipeline.
+
+Contains functions for clause review, filtering, document generation,
+deduplication, and search index operations.
+"""
+
 import json
-from src.llm.clients import get_openai_client, get_ai_search_client, get_model_config
+from src.config.load_config import get_model_config
 from src.pipeline.clause_extraction_and_processing import normalize_clause_number
+from src.pipeline.embedding import generate_embedding
 from azure.search.documents.models import VectorizableTextQuery
 from azure.core.exceptions import HttpResponseError
 import time
@@ -26,17 +34,8 @@ from azure.search.documents.indexes.models import (
     SearchIndexerDataNoneIdentity,
 )
 
-from src.pipeline.embedding import generate_embedding
 
-
-model_config = get_model_config()["openai_models"]["gpt_4o_mini"]
-
-client = get_openai_client()
-
-search_client = get_ai_search_client()
-
-
-def review_clauses(clauses, client, response_format, config, termo):
+def review_clauses(clauses, client, search_client, response_format, config, termo):
     """
     Review and legally validate a list of contract clauses using Azure Cognitive Search
     for reference retrieval and Azure OpenAI for structured legal review.
@@ -1275,30 +1274,21 @@ def add_comment_bubble_opc(
         )
 
 
-def create_temp_index(search_index, deployment_name, model_name):
+def create_temp_index(search_index, deployment_name, model_name, resource_url):
     """
-    Create a temporary Azure Cognitive Search index configured for clause embeddings.
-
-    This index will include fields for clause metadata and a vector field using
-    Azure OpenAI for on-the-fly embedding generation. The index name is randomized
-    to avoid collisions in the search service.
+    Create a temporary Azure Cognitive Search index for clause embeddings.
 
     Parameters:
-        search_index (SearchIndexClient):
-            Client instance for managing Azure Cognitive Search indexes.
-        deployment_name (str):
-            Name of the Azure OpenAI deployment to use for the vectorizer.
-        model_name (str):
-            Model name (e.g., "text-embedding-ada-002") for generating embeddings.
+        search_index: SearchIndexClient for managing indexes.
+        deployment_name (str): Azure OpenAI deployment for the vectorizer.
+        model_name (str): Embedding model name (e.g., "text-embedding-ada-002").
+        resource_url (str): Azure OpenAI resource URL (from Settings).
 
     Returns:
         str: The name of the newly created temporary index.
     """
-
-    # Generate a unique temporary index name with an 8-hex-digit suffix
     tmp_index_name = f"tmp_clause_{uuid.uuid4().hex[:8]}"
 
-    # Define the schema: metadata fields + an embedding vector field
     fields = [
         SearchField(name="id", type=SearchFieldDataType.String, key=True),
         SearchField(
@@ -1323,7 +1313,7 @@ def create_temp_index(search_index, deployment_name, model_name):
             vector_search_profile_name="myHnswProfile",
         ),
     ]
-    # Configure vector search with HNSW algorithm and an Azure OpenAI vectorizer
+
     vector_search = VectorSearch(
         algorithms=[HnswAlgorithmConfiguration(name="myHnsw")],
         profiles=[
@@ -1338,9 +1328,8 @@ def create_temp_index(search_index, deployment_name, model_name):
                 vectorizer_name="clauseVector",
                 kind="azureOpenAI",
                 parameters=AzureOpenAIVectorizerParameters(
-                    resource_url="https://logicalis-latam-ai-eastus.openai.azure.com",  # search_config["endpoint"].replace(".search.", ".openai."),
+                    resource_url=resource_url,
                     deployment_name=deployment_name,
-                    # api_key=index_credentials['key'],
                     auth_identity=SearchIndexerDataNoneIdentity(),
                     model_name=model_name,
                 ),
@@ -1348,39 +1337,23 @@ def create_temp_index(search_index, deployment_name, model_name):
         ],
     )
 
-    # Assemble the index definition
     index = SearchIndex(name=tmp_index_name, fields=fields, vector_search=vector_search)
-    # Create or update the index in the search service
     result = search_index.create_or_update_index(index)
-    print(f"Index '{result.name}' created successfully.")
-
-    # Return the generated index name for downstream use
     return tmp_index_name
 
 
-def vectorize_and_upload(data, index_client):
+def vectorize_and_upload(data, index_client, embeddings_client):
     """
-    Generate embeddings for each contract clause and upload them to Azure Cognitive Search.
+    Generate embeddings for each contract clause and upload to Azure Cognitive Search.
 
     Parameters:
-        data (dict): Mapping of page keys to dicts containing 'clauses' lists. Each clause must include:
-            - 'id' (str): Unique identifier for the clause.
-            - 'numero_da_clausula' (str): Clause number.
-            - 'clasula_original' (str): Original clause text to embed.
-            - 'problema_juridico' (str): Legal issue description.
-            - 'clausula_revisada' (str): Revised clause text.
-        index_client: Azure Cognitive Search client instance with an upload_documents method.
-
-    Returns:
-        None
+        data (dict): Mapping of page keys to dicts with 'clauses' lists.
+        index_client: SearchClient with upload_documents method.
+        embeddings_client: AzureOpenAI client configured for embeddings.
     """
-
-    # List to accumulate documents for indexing
     documents = []
-    # Iterate through each page and its clauses
     for page_key, page in data.items():
         for clause in page["clauses"]:
-            # Build the document record with metadata and computed embedding
             documents.append(
                 {
                     "id": clause["id"],
@@ -1388,14 +1361,13 @@ def vectorize_and_upload(data, index_client):
                     "clasula_original": clause["clasula_original"],
                     "problema_juridico": clause["problema_juridico"],
                     "clausula_revisada": clause["clausula_revisada"],
-                    # Compute the embedding vector for the clause's original text
-                    "embedding": generate_embedding(clause["clasula_original"]),
+                    "embedding": generate_embedding(
+                        embeddings_client, clause["clasula_original"]
+                    ),
                 }
             )
-    # Upload all documents to the search index
     result = index_client.upload_documents(documents=documents)
-    # Print how many documents were successfully uploaded
-    print(f"Uploaded {len(result)} documents successfully.")
+    return len(result)
 
 
 # Parâmetros de retry — ajuste conforme sua realidade

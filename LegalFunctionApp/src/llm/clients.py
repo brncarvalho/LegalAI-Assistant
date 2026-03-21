@@ -1,136 +1,87 @@
+"""
+Client factory functions for Azure services.
+
+Each function receives a Settings object (dependency injection) instead of
+calling os.getenv() internally. This means:
+- No module-level side effects (safe to import without env vars set)
+- Testable: pass a mock Settings in tests
+- Explicit: the caller controls which config is used
+"""
+
+import httpx
 from openai import AzureOpenAI
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
-from openai import AzureOpenAI, DefaultHttpxClient
-import httpx
 
-from src.config.load_config import (
-    get_model_config,
-    get_doc_intelligence_credentials,
-    get_openai_credentials,
-    get_embeddings_credentials,
-    get_search_credentials,
-)
+from src.config.settings import Settings
+from src.config.load_config import get_model_config
 
 
-
-def get_openai_client(model_key: str = "gpt_4o_mini") -> AzureOpenAI:
+def get_openai_client(settings: Settings, model_key: str = "gpt_4o") -> AzureOpenAI:
     """
-    Create and return an AzureOpenAI client for language model requests.
+    Create an AzureOpenAI client for LLM requests.
 
     Parameters:
-        model_key (str): Key to select which model configuration to use from
-            the 'openai_models' section of the loaded model_config.yaml.
-            Defaults to "gpt_4o_mini".
-
-    Returns:
-        AzureOpenAI: An instance of the AzureOpenAI client configured with
-            the specified model's API version and endpoint/key credentials.
+        settings: Application settings with Azure OpenAI credentials.
+        model_key: Which model config to use from model_config.yaml.
     """
-    # load endpoint and key for Azure OpenAI from environment
-    credentials = get_openai_credentials()
-    # fetch the model-specific configuration (e.g., api_version) from YAML
     model_config = get_model_config()["openai_models"][model_key]
 
-    timeout = httpx.Timeout(
-    connect=5.0,  # tempo para abrir conexão
-    read=90.0,    # tempo máximo esperando resposta
-    write=5.0,    # tempo máximo para enviar o corpo da requisição
-    pool=5.0      # tempo máximo esperando por uma conexão do pool
-)
-    httpx_client = httpx.Client(timeout=timeout)
+    timeout = httpx.Timeout(connect=5.0, read=90.0, write=5.0, pool=5.0)
+    http_client = httpx.Client(timeout=timeout)
 
-
-    # instantiate and return the AzureOpenAI client
     return AzureOpenAI(
-        api_version=model_config["api_version"],  # API version for this model
-        azure_endpoint=credentials["endpoint"],   # the Azure OpenAI endpoint URL
-        api_key=credentials["key"],
-        http_client=httpx_client       # the Azure OpenAI API key
+        api_version=model_config["api_version"],
+        azure_endpoint=settings.azure_openai_endpoint,
+        api_key=settings.azure_openai_api_key,
+        http_client=http_client,
     )
 
 
-
-def get_embeddings_openai_client(model_key: str = "embeddings") -> AzureOpenAI:
-    """
-    Create and return an AzureOpenAI client specifically for embedding requests.
-
-    Parameters:
-        model_key (str): Key to select which embeddings model configuration to use
-            from the 'openai_models' section of the loaded model_config.yaml.
-            Defaults to "embeddings".
-
-    Returns:
-        AzureOpenAI: An instance of the AzureOpenAI client configured for embeddings.
-    """
-    # load endpoint and key for embeddings service from environment
-    credentials = get_embeddings_credentials()
-    # fetch the embeddings model configuration from YAML
+def get_embeddings_openai_client(
+    settings: Settings, model_key: str = "embeddings"
+) -> AzureOpenAI:
+    """Create an AzureOpenAI client for embedding requests."""
     model_config = get_model_config()["openai_models"][model_key]
 
-    # instantiate and return the AzureOpenAI client for embeddings
     return AzureOpenAI(
-        api_version=model_config["api_version"],  # API version for embeddings model
-        azure_endpoint=credentials["endpoint"],   # embeddings service endpoint
-        api_key=credentials["key"],               # embeddings service API key
+        api_version=model_config["api_version"],
+        azure_endpoint=settings.embeddings_openai_endpoint,
+        api_key=settings.embeddings_openai_api_key,
     )
 
 
-
-def get_document_intelligence_client() -> DocumentIntelligenceClient:
-    """
-    Create and return a DocumentIntelligenceClient for Azure Document Intelligence.
-
-    Returns:
-        DocumentIntelligenceClient: Configured client for analyzing documents
-            using the prebuilt/form-trained models.
-    """
-    # load endpoint and key for Document Intelligence from environment
-    credentials = get_doc_intelligence_credentials()
-    # instantiate and return the DocumentIntelligenceClient
+def get_document_intelligence_client(settings: Settings) -> DocumentIntelligenceClient:
+    """Create a DocumentIntelligenceClient for PDF analysis."""
     return DocumentIntelligenceClient(
-        endpoint=credentials["endpoint"],                # the DocIntelligence endpoint URL
-        credential=AzureKeyCredential(credentials["key"])  # API key wrapped in AzureKeyCredential
+        endpoint=settings.azure_ai_doc_intelligence_endpoint,
+        credential=AzureKeyCredential(settings.azure_ai_doc_intelligence_api_key),
     )
 
 
-def get_ai_search_client(
-    index_name: str = get_model_config()["azure_ai_search"]["index_name"]
-) -> SearchClient:
+def get_ai_search_client(settings: Settings, index_name: str | None = None) -> SearchClient:
     """
-    Create and return a SearchClient for Azure Cognitive Search operations.
+    Create a SearchClient for querying an Azure Cognitive Search index.
 
     Parameters:
-        index_name (str): Name of the search index to operate on, taken by default from
-            the 'azure_ai_search.index_name' value in model_config.yaml.
-
-    Returns:
-        SearchClient: Configured client to query and manage documents within the specified index.
+        settings: Application settings with Azure Search credentials.
+        index_name: Override the index name. Defaults to the value in model_config.yaml.
     """
-    # load endpoint and key for Azure Search from environment
-    credentials = get_search_credentials()
-    # instantiate and return the SearchClient for the given index
+    if index_name is None:
+        index_name = get_model_config()["azure_ai_search"]["index_name"]
+
     return SearchClient(
-        endpoint=credentials["endpoint"],        # Azure Search service endpoint
-        index_name=index_name,                   # target index name
-        credential=AzureKeyCredential(credentials["key"]),  # API key credential
+        endpoint=settings.azure_ai_search_endpoint,
+        index_name=index_name,
+        credential=AzureKeyCredential(settings.azure_ai_search_api_key),
     )
 
 
-def get_ai_indexing_client() -> SearchIndexClient:
-    """
-    Create and return a SearchIndexClient for Azure Cognitive Search index management.
-
-    Returns:
-        SearchIndexClient: Configured client for creating, updating, or deleting search indexes.
-    """
-    # load endpoint and key for Azure Search from environment
-    credentials = get_search_credentials()
-    # instantiate and return the SearchIndexClient
+def get_ai_indexing_client(settings: Settings) -> SearchIndexClient:
+    """Create a SearchIndexClient for managing search indexes."""
     return SearchIndexClient(
-        endpoint=credentials["endpoint"],                # Azure Search service endpoint
-        credential=AzureKeyCredential(credentials["key"])  # API key credential
+        endpoint=settings.azure_ai_search_endpoint,
+        credential=AzureKeyCredential(settings.azure_ai_search_api_key),
     )
-
