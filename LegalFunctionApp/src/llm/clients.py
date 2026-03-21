@@ -9,14 +9,14 @@ calling os.getenv() internally. This means:
 """
 
 import httpx
-from openai import AzureOpenAI
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
+from openai import AzureOpenAI
 
-from src.config.settings import Settings
 from src.config.load_config import get_model_config
+from src.config.settings import Settings
 
 
 def get_openai_client(settings: Settings, model_key: str = "gpt_4o") -> AzureOpenAI:

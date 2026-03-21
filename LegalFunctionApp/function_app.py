@@ -5,34 +5,34 @@ This is the entry point. It creates Settings once and passes dependencies
 (clients, config) down to pipeline functions — never at module level.
 """
 
-import tempfile
-import logging
 import calendar
-from datetime import datetime, timezone
+import logging
 import shutil
-from pathlib import Path
+import tempfile
 import uuid
+from datetime import UTC, datetime
+from pathlib import Path
 
-import azure.functions as func
 import azure.durable_functions as df
+import azure.functions as func
 
-from src.config.settings import Settings
 from src.config.load_config import get_model_config
+from src.config.settings import Settings
 from src.llm.clients import (
-    get_openai_client,
     get_ai_search_client,
     get_document_intelligence_client,
+    get_openai_client,
 )
-from src.services.blob_storage import BlobStorageService
 from src.pipeline.clause_extraction_and_processing import (
-    extract_contract_json,
     apply_page_overlap,
+    extract_contract_json,
     normalize_clause_numbers,
 )
-from src.pipeline.reviewing import review_clauses
-from src.pipeline.filtering import filter_clauses_with_gpt4o
 from src.pipeline.deduplication import deduplicate_clauses
 from src.pipeline.document_generation import create_original_and_revised_docs
+from src.pipeline.filtering import filter_clauses_with_gpt4o
+from src.pipeline.reviewing import review_clauses
+from src.services.blob_storage import BlobStorageService
 from src.utils.models import PageOutput, PageReviewedOutput
 
 logging.basicConfig(level=logging.INFO)
@@ -184,7 +184,7 @@ def Orchestrator(context: df.DurableOrchestrationContext):
 
     # Build usage metadata
     contract_name = Path(merged_blob_info["reviewed_blob"]).name.split(".", 1)[0]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     month_name = calendar.month_name[now.month]
     month_year = now.strftime("%m-%Y")
 

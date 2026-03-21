@@ -14,9 +14,9 @@ Other responsibilities have been split into focused modules:
 """
 
 import json
-import tiktoken
 import logging
 
+import tiktoken
 from azure.search.documents.models import VectorizableTextQuery
 
 from src.utils.retry import safe_parse_with_retry

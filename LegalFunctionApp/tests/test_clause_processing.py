@@ -5,9 +5,9 @@ These are pure functions (no network calls) — perfect for unit testing.
 """
 
 from src.pipeline.clause_extraction_and_processing import (
+    apply_page_overlap,
     normalize_clause_number,
     normalize_clause_numbers,
-    apply_page_overlap,
 )
 
 

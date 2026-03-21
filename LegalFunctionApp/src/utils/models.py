@@ -1,5 +1,6 @@
+
 from pydantic import BaseModel, Field
-from typing import List, Optional
+
 
 class Clause(BaseModel):
     """
@@ -24,7 +25,7 @@ class PageOutput(BaseModel):
         clauses (List[Clause]): List of Clause objects found on this page.
     """
     page_number: int  # the page index from which clauses were extracted
-    clauses: List[Clause]  # list of Clause models for this page
+    clauses: list[Clause]  # list of Clause models for this page
 
 
 class ReviewedClause(BaseModel):
@@ -51,4 +52,4 @@ class PageReviewedOutput(BaseModel):
     Attributes:
         clauses (List[ReviewedClause]): List of clauses with review metadata.
     """
-    clauses: List[ReviewedClause]  # list of ReviewedClause models for this page
+    clauses: list[ReviewedClause]  # list of ReviewedClause models for this page

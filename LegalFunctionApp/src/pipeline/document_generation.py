@@ -5,10 +5,10 @@ Creates .docx files with original and revised clauses,
 including OPC comment bubble annotations for legal issues.
 """
 
-import os
 import logging
-import tempfile
+import os
 import shutil
+import tempfile
 import zipfile
 from pathlib import Path
 

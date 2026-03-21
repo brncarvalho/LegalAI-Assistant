@@ -8,15 +8,15 @@ and bulk vectorization/upload of reviewed clauses.
 import uuid
 
 from azure.search.documents.indexes.models import (
+    AzureOpenAIVectorizer,
+    AzureOpenAIVectorizerParameters,
+    HnswAlgorithmConfiguration,
     SearchField,
     SearchFieldDataType,
     SearchIndex,
-    VectorSearch,
-    HnswAlgorithmConfiguration,
-    VectorSearchProfile,
-    AzureOpenAIVectorizer,
-    AzureOpenAIVectorizerParameters,
     SearchIndexerDataNoneIdentity,
+    VectorSearch,
+    VectorSearchProfile,
 )
 
 from src.pipeline.embedding import generate_embedding

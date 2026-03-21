@@ -5,15 +5,16 @@ Creates indexes, uploads prototype clauses, and performs similarity searches.
 """
 
 import uuid
+
 from azure.search.documents.indexes.models import (
+    AzureOpenAIVectorizer,
+    AzureOpenAIVectorizerParameters,
+    HnswAlgorithmConfiguration,
     SearchField,
     SearchFieldDataType,
     SearchIndex,
     VectorSearch,
-    HnswAlgorithmConfiguration,
     VectorSearchProfile,
-    AzureOpenAIVectorizer,
-    AzureOpenAIVectorizerParameters,
 )
 
 from src.config.load_config import get_model_config

@@ -6,6 +6,7 @@ clause chunking/overlap/normalization logic.
 """
 
 import re
+
 from azure.ai.documentintelligence.models import DocumentContentFormat
 
 

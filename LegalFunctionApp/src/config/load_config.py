@@ -9,6 +9,7 @@ For secrets and endpoints, see settings.py (Pydantic BaseSettings).
 """
 
 import os
+
 import yaml
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "model_config.yaml")
@@ -16,5 +17,5 @@ CONFIG_PATH = os.path.join(os.path.dirname(__file__), "model_config.yaml")
 
 def get_model_config() -> dict:
     """Load and return model configuration from the YAML file."""
-    with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+    with open(CONFIG_PATH, encoding="utf-8") as f:
         return yaml.safe_load(f)
