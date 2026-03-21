@@ -55,3 +55,5 @@ Thumbs.db
 # Claude Code (project-specific, not repo content)
 # ──────────────────────────────────────────────
 .claude/
+
+word_formating_VM.py

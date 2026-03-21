@@ -50,3 +50,4 @@ __azurite_db*__.json
 #Local python scripts
 
 formatting.py
+word_formating_VM.py
