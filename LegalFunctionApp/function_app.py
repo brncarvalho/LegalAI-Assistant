@@ -29,7 +29,7 @@ from src.llm.clients import (
 from src.pipeline.clause_extraction_and_processing import (
     extract_contract_json,
     apply_page_overlap,
-    filtrar_clausulas_por_numero,
+    normalize_clause_numbers,
 )
 from src.pipeline.reviewing import review_clauses
 from src.pipeline.filtering import filter_clauses_with_gpt4o
@@ -304,7 +304,7 @@ def ReviewClausesChunkActivity(clauseschunk: dict) -> dict:
         chunk, client, search_client, PageReviewedOutput, model_cfg, party
     )
 
-    filtered_by_numbers = filtrar_clausulas_por_numero(
+    filtered_by_numbers = normalize_clause_numbers(
         reviewed_clauses["reviewed_clauses"]
     )
 

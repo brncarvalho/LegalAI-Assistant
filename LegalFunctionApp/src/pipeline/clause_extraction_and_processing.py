@@ -93,21 +93,24 @@ def normalize_clause_number(raw: str) -> str:
     return re.sub(r"\.+$", "", raw.strip())
 
 
-def filtrar_clausulas_por_numero(dict_clausulas):
+def normalize_clause_numbers(clauses_dict):
     """
     Normalize internal clause numbers to match their parent clause key.
 
+    For each clause group, ensures all internal 'numero_da_clausula' values
+    match the parent key (e.g., if key is "3.1", all clauses inside get "3.1").
+
     Parameters:
-        dict_clausulas (dict): Mapping of clause numbers to dicts with 'clauses' lists.
+        clauses_dict (dict): Mapping of clause numbers to dicts with 'clauses' lists.
 
     Returns:
         dict: Updated mapping with normalized 'numero_da_clausula' values.
     """
-    for chave, valor in dict_clausulas.items():
-        clausula_numero_principal = chave.strip('.')
-        clausulas_internas = valor.get('clauses', [])
-        for clausula in clausulas_internas:
-            if clausula['numero_da_clausula'].strip('.') != clausula_numero_principal:
-                clausula['numero_da_clausula'] = clausula_numero_principal
+    for key, value in clauses_dict.items():
+        main_number = key.strip('.')
+        internal_clauses = value.get('clauses', [])
+        for clause in internal_clauses:
+            if clause['numero_da_clausula'].strip('.') != main_number:
+                clause['numero_da_clausula'] = main_number
 
-    return dict_clausulas
+    return clauses_dict

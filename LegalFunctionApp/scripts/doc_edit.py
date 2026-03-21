@@ -9,7 +9,7 @@ from src.llm.clients import (
 from src.pipeline.clause_extraction_and_processing import (
     extract_contract_json,
     apply_page_overlap,
-    filtrar_clausulas_por_numero,
+    normalize_clause_numbers,
 )
 from src.pipeline.reviewing import (
     review_clauses,
@@ -70,7 +70,7 @@ reviewed_clauses = review_clauses(
 reviewed_clauses
 
 # %%
-dict_filtrado = filtrar_clausulas_por_numero(reviewed_clauses["reviewed_clauses"])
+dict_filtrado = normalize_clause_numbers(reviewed_clauses["reviewed_clauses"])
 # %%
 dict_filtrado
 
