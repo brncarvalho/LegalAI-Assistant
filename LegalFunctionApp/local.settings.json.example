@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AzureWebJobsFeatureFlags": "EnableWorkerIndexing",
+    "AzureWebJobsStorage": "",
+
+    "AZURE_OPENAI_API_KEY": "",
+    "AZURE_OPENAI_ENDPOINT": "",
+
+    "AZURE_AI_DOC_INTELLIGENCE_ENDPOINT": "",
+    "AZURE_AI_DOC_INTELLIGENCE_API_KEY": "",
+
+    "EMBEDDINGS_OPENAI_API_KEY": "",
+    "EMBEDDINGS_OPENAI_ENDPOINT": "",
+
+    "AZURE_AI_SEARCH_API_KEY": "",
+    "AZURE_AI_SEARCH_ENDPOINT": "",
+
+    "AZURE_OPENAI_RESOURCE_URL": ""
+  }
+}
