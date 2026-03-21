@@ -31,12 +31,10 @@ from src.pipeline.clause_extraction_and_processing import (
     apply_page_overlap,
     filtrar_clausulas_por_numero,
 )
-from src.pipeline.reviewing import (
-    deduplicate_clauses,
-    filter_clauses_with_gpt4o,
-    review_clauses,
-    create_original_and_revised_docs,
-)
+from src.pipeline.reviewing import review_clauses
+from src.pipeline.filtering import filter_clauses_with_gpt4o
+from src.pipeline.deduplication import deduplicate_clauses
+from src.pipeline.document_generation import create_original_and_revised_docs
 from src.utils.models import PageOutput, PageReviewedOutput
 
 logging.basicConfig(level=logging.INFO)
