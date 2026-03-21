@@ -5,9 +5,8 @@ Handles PDF extraction via Azure Document Intelligence and
 clause chunking/overlap/normalization logic.
 """
 
-from azure.ai.documentintelligence.models import DocumentContentFormat
-import tiktoken
 import re
+from azure.ai.documentintelligence.models import DocumentContentFormat
 
 
 def extract_contract_json(doc_client, filepath, type='contract'):
@@ -83,42 +82,6 @@ def apply_page_overlap(chunks, overlap_pages=3):
     return overlapped
 
 
-def apply_token_overlap_by_tokens(chunks, overlap_tokens=600, model_name="gpt-4o"):
-    """
-    Apply token-level overlap from the next page to each chunk.
-
-    Parameters:
-        chunks (list[str]): List of page content strings.
-        overlap_tokens (int): Number of tokens to overlap from the next page.
-        model_name (str): Tokenizer model name.
-
-    Returns:
-        list[dict]: Chunks with content extended by token overlap.
-    """
-    tokenizer = tiktoken.encoding_for_model(model_name)
-    overlapped_chunks = []
-
-    for i, chunk in enumerate(chunks):
-        current_content = chunk
-
-        if i + 1 < len(chunks):
-            next_content = chunks[i + 1]
-            next_tokens = tokenizer.encode(next_content)
-            slice_end = min(overlap_tokens, len(next_tokens))
-            next_overlap = tokenizer.decode(next_tokens[:slice_end])
-        else:
-            next_overlap = ""
-
-        if next_overlap:
-            combined = f"{current_content}\n\n{next_overlap}"
-        else:
-            combined = current_content
-
-        overlapped_chunks.append({"content": combined})
-
-    return overlapped_chunks
-
-
 def normalize_clause_number(raw: str) -> str:
     """
     Normalize a clause number by stripping whitespace and trailing dots.
@@ -128,35 +91,6 @@ def normalize_clause_number(raw: str) -> str:
         " 4.2 " -> "4.2"
     """
     return re.sub(r"\.+$", "", raw.strip())
-
-
-def merge_overlapped_clauses(extracted_pages: dict):
-    """
-    Merge overlapped clauses from multiple pages into a deduplicated list.
-    Keeps the longest version of each clause.
-
-    Parameters:
-        extracted_pages (dict): Mapping of page numbers to dicts with 'clauses' lists.
-
-    Returns:
-        list[dict]: Unique clauses with 'clause_number' and 'content'.
-    """
-    consolidated_clauses = {}
-    for page, data in extracted_pages.items():
-        for clause in data["clauses"]:
-            clause_number = clause["clause_number"]
-            key = normalize_clause_number(clause_number)
-            content = clause["content"].strip()
-            if key not in consolidated_clauses or len(content) > len(consolidated_clauses[key]):
-                consolidated_clauses[key] = content
-
-    seen = set()
-    final_clauses = []
-    for num, content in consolidated_clauses.items():
-        if content not in seen:
-            seen.add(content)
-            final_clauses.append({"clause_number": num, "content": content})
-    return final_clauses
 
 
 def filtrar_clausulas_por_numero(dict_clausulas):
@@ -177,15 +111,3 @@ def filtrar_clausulas_por_numero(dict_clausulas):
                 clausula['numero_da_clausula'] = clausula_numero_principal
 
     return dict_clausulas
-
-
-def clause_key(num_str: str):
-    """
-    Convert a dot-separated clause number to a sortable tuple.
-
-    Examples:
-        "4.5.2" -> (4, 5, 2)
-        "3" -> (3,)
-    """
-    parts = [p for p in num_str.split('.') if p]
-    return tuple(int(p) for p in parts)
