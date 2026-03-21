@@ -8,6 +8,7 @@ to identify numbered clauses, group sub-items, and produce structured output.
 import json
 
 from src.utils.retry import safe_parse_with_retry
+from src.utils.token_tracker import TokenTracker
 
 
 def filter_clauses_with_gpt4o(chunks, client, response_format, config):
@@ -30,9 +31,7 @@ def filter_clauses_with_gpt4o(chunks, client, response_format, config):
             "usage": {"prompt": int, "completion": int, "total": int}
         }
     """
-    total_prompt = 0
-    total_completion = 0
-    total_tokens = 0
+    tracker = TokenTracker()
     filtered_clauses = {}
 
     i = 0
@@ -289,9 +288,7 @@ def filter_clauses_with_gpt4o(chunks, client, response_format, config):
 
         response = safe_parse_with_retry(client, messages, response_format, config)
 
-        total_prompt += response.usage.prompt_tokens
-        total_completion += response.usage.completion_tokens
-        total_tokens += response.usage.total_tokens
+        tracker.track(response)
 
         structured_output = response.choices[0].message.parsed
         filtered_clauses[i] = json.loads(structured_output.model_dump_json(indent=2))
@@ -299,9 +296,5 @@ def filter_clauses_with_gpt4o(chunks, client, response_format, config):
 
     return {
         "clauses": filtered_clauses,
-        "usage": {
-            "prompt": total_prompt,
-            "completion": total_completion,
-            "total": total_tokens,
-        },
+        "usage": tracker.usage,
     }

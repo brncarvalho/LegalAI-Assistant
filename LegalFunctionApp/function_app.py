@@ -5,8 +5,6 @@ This is the entry point. It creates Settings once and passes dependencies
 (clients, config) down to pipeline functions — never at module level.
 """
 
-import os
-import json
 import tempfile
 import logging
 import calendar
@@ -17,7 +15,6 @@ import uuid
 
 import azure.functions as func
 import azure.durable_functions as df
-from azure.storage.blob import BlobServiceClient
 
 from src.config.settings import Settings
 from src.config.load_config import get_model_config
@@ -26,6 +23,7 @@ from src.llm.clients import (
     get_ai_search_client,
     get_document_intelligence_client,
 )
+from src.services.blob_storage import BlobStorageService
 from src.pipeline.clause_extraction_and_processing import (
     extract_contract_json,
     apply_page_overlap,
@@ -218,11 +216,11 @@ def _get_settings() -> Settings:
     return Settings()
 
 
-def _get_storage() -> BlobServiceClient:
-    """Create a BlobServiceClient from the storage connection string."""
-    return BlobServiceClient.from_connection_string(
-        _get_settings().azure_web_jobs_storage
-    )
+def _get_storage(settings: Settings | None = None) -> BlobStorageService:
+    """Create a BlobStorageService. Accepts Settings to avoid double-creation."""
+    if settings is None:
+        settings = _get_settings()
+    return BlobStorageService(settings.azure_web_jobs_storage)
 
 
 @df_app.activity_trigger(input_name="payload")
@@ -235,12 +233,11 @@ def ExtractAndSaveActivity(payload: dict) -> dict:
     logging.info("[ExtractAndSaveActivity] Start extracting '%s'", blob_name)
 
     settings = _get_settings()
-    storage = BlobServiceClient.from_connection_string(settings.azure_web_jobs_storage)
-    container = storage.get_container_client("contracts-container")
+    storage = _get_storage(settings)
 
-    downloader = container.download_blob(blob_name)
+    pdf_bytes = storage.download_blob_bytes("contracts-container", blob_name)
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
-        tmp.write(downloader.readall())
+        tmp.write(pdf_bytes)
         tmp.flush()
         pdf_path = tmp.name
 
@@ -253,10 +250,7 @@ def ExtractAndSaveActivity(payload: dict) -> dict:
     )
 
     raw_blob = blob_name.rsplit(".", 1)[0] + ".json"
-    raw_container = storage.get_container_client("output")
-    raw_container.upload_blob(
-        name=raw_blob, data=json.dumps(chunks, ensure_ascii=False), overwrite=True
-    )
+    storage.upload_json("output", raw_blob, chunks)
     logging.info("[ExtractAndSaveActivity] Raw JSON saved as '%s'", raw_blob)
 
     return {"raw_blob": raw_blob}
@@ -325,24 +319,17 @@ def CreateReviewedDocumentActivity(blobInfo: dict) -> dict:
     reviewed_blob = blobInfo["reviewed_blob"]
     logging.info("[CreateReviewedDocumentActivity] Start, blob: %s", reviewed_blob)
 
-    settings = _get_settings()
-    service = BlobServiceClient.from_connection_string(settings.azure_web_jobs_storage)
-
-    container_name = "reviewed-clauses"
-    in_container = service.get_container_client(container_name)
-    reviewed_data = json.loads(in_container.download_blob(reviewed_blob).readall())
+    storage = _get_storage()
+    reviewed_data = storage.download_json("reviewed-clauses", reviewed_blob)
 
     tmp_dir = Path(tempfile.mkdtemp())
     orig_path, rev_path = create_original_and_revised_docs(
         reviewed_data, tmp_dir, reviewed_blob
     )
 
-    out_container = service.get_container_client("reviewed-documents")
     for p in [orig_path, rev_path]:
-        blob_name = p.name
-        with open(p, "rb") as f:
-            out_container.upload_blob(name=blob_name, data=f, overwrite=True)
-        logging.info("[CreateReviewedDocumentActivity] Uploaded %s", blob_name)
+        storage.upload_file("reviewed-documents", p.name, str(p))
+        logging.info("[CreateReviewedDocumentActivity] Uploaded %s", p.name)
 
     shutil.rmtree(tmp_dir)
     return {"original_blob": orig_path.name, "revised_blob": rev_path.name}
@@ -351,27 +338,16 @@ def CreateReviewedDocumentActivity(blobInfo: dict) -> dict:
 @df_app.activity_trigger(input_name="blobInfo")
 def DownloadJsonArrayActivity(blobInfo: dict) -> list:
     """Download a JSON blob and parse it into a Python list or dict."""
-    settings = _get_settings()
-    svc = BlobServiceClient.from_connection_string(settings.azure_web_jobs_storage)
-    data = (
-        svc.get_container_client(blobInfo["container_name"])
-        .download_blob(blobInfo["blob"])
-        .readall()
-    )
-    return json.loads(data)
+    storage = _get_storage()
+    return storage.download_json(blobInfo["container_name"], blobInfo["blob"])
 
 
 @df_app.activity_trigger(input_name="blobInfo")
 def SaveJsonArrayActivity(blobInfo: dict) -> dict:
     """Save a Python dict/list as a JSON blob."""
     blob_name = f"{blobInfo['base_name']}.reviewed.full.json"
-    settings = _get_settings()
-    svc = BlobServiceClient.from_connection_string(settings.azure_web_jobs_storage)
-    svc.get_container_client(blobInfo["container_name"]).upload_blob(
-        name=blob_name,
-        data=json.dumps(blobInfo["map"], ensure_ascii=False),
-        overwrite=True,
-    )
+    storage = _get_storage()
+    storage.upload_json(blobInfo["container_name"], blob_name, blobInfo["map"])
     return {"reviewed_blob": blob_name}
 
 
@@ -381,11 +357,7 @@ def SaveUsageActivity(info: dict) -> dict:
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d-%H-%M")
 
-    settings = _get_settings()
-    svc = BlobServiceClient.from_connection_string(settings.azure_web_jobs_storage)
-    container = svc.get_container_client("usage-metrics")
+    storage = _get_storage()
     blob_name = f"{info['base_name']}-{timestamp}-log-usage.json"
-    container.upload_blob(
-        name=blob_name, data=json.dumps(info, ensure_ascii=False), overwrite=True
-    )
+    storage.upload_json("usage-metrics", blob_name, info)
     return {"blob_name": blob_name}

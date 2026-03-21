@@ -20,6 +20,7 @@ import logging
 from azure.search.documents.models import VectorizableTextQuery
 
 from src.utils.retry import safe_parse_with_retry
+from src.utils.token_tracker import TokenTracker
 
 logger = logging.getLogger(__name__)
 
@@ -40,13 +41,9 @@ def review_clauses(clauses, client, search_client, response_format, config, term
     Returns:
         dict: {"reviewed_clauses": {clause_number: review_result, ...}, "usage": {...}}
     """
-    model_config = config
     encoding = tiktoken.get_encoding("cl100k_base")
     list_of_reviewed_clauses = {}
-
-    total_prompt = 0
-    total_completion = 0
-    total_tokens = 0
+    tracker = TokenTracker()
 
     for clause in clauses:
         clause_content = clause["content"]
@@ -178,10 +175,7 @@ def review_clauses(clauses, client, search_client, response_format, config, term
         ]
 
         response = safe_parse_with_retry(client, messages, response_format, config)
-
-        total_prompt += response.usage.prompt_tokens
-        total_completion += response.usage.completion_tokens
-        total_tokens += response.usage.total_tokens
+        tracker.track(response)
 
         structured_output = response.choices[0].message.parsed
 
@@ -191,11 +185,7 @@ def review_clauses(clauses, client, search_client, response_format, config, term
 
     return {
         "reviewed_clauses": list_of_reviewed_clauses,
-        "usage": {
-            "prompt": total_prompt,
-            "completion": total_completion,
-            "total": total_tokens,
-        },
+        "usage": tracker.usage,
     }
 
 
@@ -221,10 +211,7 @@ def review_clauses_with_contract_context(
     """
     model_config = config
     list_of_reviewed_clauses = {}
-
-    total_prompt = 0
-    total_completion = 0
-    total_tokens = 0
+    tracker = TokenTracker()
 
     for page_key, page in clauses.items():
         for clause in page["clauses"]:
@@ -362,9 +349,7 @@ def review_clauses_with_contract_context(
                 model=model_config["deployment"],
             )
 
-            total_prompt += response.usage.prompt_tokens
-            total_completion += response.usage.completion_tokens
-            total_tokens += response.usage.total_tokens
+            tracker.track(response)
 
             structured_output = response.choices[0].message.parsed
 
@@ -391,9 +376,5 @@ def review_clauses_with_contract_context(
 
     return {
         "reviewed_clauses": list_of_reviewed_clauses,
-        "usage": {
-            "prompt": total_prompt,
-            "completion": total_completion,
-            "total": total_tokens,
-        },
+        "usage": tracker.usage,
     }
