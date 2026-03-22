@@ -1,5 +1,3 @@
-# %%
-
 import win32com.client as win32
 from pathlib import Path
 import tempfile
@@ -9,14 +7,8 @@ import os
 import json
 import pythoncom
 from azure.storage.blob import BlobServiceClient
-# %%
 
 
-with open(r"C:\Users\bruno\Downloads\algar_new_prompt.json", "r", encoding="utf8") as f:
-    reviewed_data = json.load(f)
-
-
-# %%
 def redline_contract(reviewed_data: dict, original_doc: Path, out_doc: Path):
     wd = win32.gencache.EnsureDispatch("Word.Application")
     wd.Visible = False
@@ -140,17 +132,6 @@ def get_all_paragraphs_robust(doc):
     return candidates
 
 
-# %%
-
-redline_contract(
-    reviewed_data=reviewed_data,
-    original_doc=Path(r"C:\Users\bruno\Documents\master_algar_completo.docx"),
-    out_doc=Path(r"C:\Users\bruno\Documents\algar_redline.docx"),
-)
-
-# %%
-
-
 class AzureWordProcessor:
     def __init__(self, connection_string):
         self.blob_service_client = BlobServiceClient.from_connection_string(
@@ -240,21 +221,4 @@ def run_redline_pipeline(
         if out_temp_path.exists():
             os.remove(out_temp_path)
 
-        # Uninitialize COM
         pythoncom.CoUninitialize()
-
-
-# --- HOW TO RUN IT ---
-# %%
-CONNECTION_STRING = ""
-run_redline_pipeline(
-    conn_string=CONNECTION_STRING,
-    json_container="reviewed-clauses",
-    json_blob="algar.reviewed.full.reviewed.full.json.json",
-    doc_container="word-contract",
-    doc_blob="algar.docx",
-    output_container="word-contract-output",
-    output_blob_name="algar_REDLINE.docx",
-)
-
-# %%
