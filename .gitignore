@@ -4,11 +4,13 @@
 __pycache__/
 *.py[cod]
 *.pyo
+*$py.class
 *.egg-info/
 dist/
 build/
 *.egg
 .eggs/
+.python_packages/
 
 # ──────────────────────────────────────────────
 # Virtual environments
@@ -16,28 +18,47 @@ build/
 .venv/
 venv/
 env/
-LegalFunctionApp/.venv/
+ENV/
+env.bak/
+venv.bak/
 
 # ──────────────────────────────────────────────
 # IDE / Editor
 # ──────────────────────────────────────────────
 .vscode/
+.vs/
 .idea/
 *.swp
 *.swo
 *~
+*.user
+*.suo
 
 # ──────────────────────────────────────────────
-# Azure Functions local emulation (Azurite)
+# Azure Functions
+# ──────────────────────────────────────────────
+bin/
+obj/
+csx/
+Publish/
+node_modules/
+*.cscfg
+*.Cache
+project.lock.json
+appsettings.json
+local.settings.json
+.secrets/
+
+# ──────────────────────────────────────────────
+# Azure local emulation (Azurite)
 # ──────────────────────────────────────────────
 __azurite_db_*
 __blobstorage__/
 __queuestorage__/
 
 # ──────────────────────────────────────────────
-# Secrets & local settings (NEVER commit these)
+# Secrets (NEVER commit these)
 # ──────────────────────────────────────────────
-local.settings.json
 .env
 
 # ──────────────────────────────────────────────
@@ -52,7 +73,7 @@ Thumbs.db
 .ipynb_checkpoints/
 
 # ──────────────────────────────────────────────
-# Claude Code (project-specific, not repo content)
+# Claude Code
 # ──────────────────────────────────────────────
 .claude/
 
