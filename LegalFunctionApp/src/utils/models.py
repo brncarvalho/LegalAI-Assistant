@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field
 
 
@@ -11,9 +10,9 @@ class Clause(BaseModel):
         clause_number (str): The clause identifier, taken from the 'numero_da_clausula' field.
         content (str): The clause body text, taken from the 'conteudo' field.
     """
-    #clause_title: str  # title or heading of the clause
-    clause_number: str = Field(..., alias="numero_da_clausula")  # identifier for the clause
-    content: str = Field(..., alias="conteudo")  # full text of the clause
+
+    clause_number: str = Field(..., alias="numero_da_clausula")
+    content: str = Field(..., alias="conteudo")
 
 
 class PageOutput(BaseModel):
@@ -24,8 +23,9 @@ class PageOutput(BaseModel):
         page_number (int): The 1-based page number in the document.
         clauses (List[Clause]): List of Clause objects found on this page.
     """
-    page_number: int  # the page index from which clauses were extracted
-    clauses: list[Clause]  # list of Clause models for this page
+
+    page_number: int
+    clauses: list[Clause]
 
 
 class ReviewedClause(BaseModel):
@@ -38,11 +38,11 @@ class ReviewedClause(BaseModel):
         problema_juridico (str): Description of the legal issue identified.
         clausula_revisada (str): The clause text after suggested legal revision.
     """
-    numero_da_clausula: str  # original clause identifier
-    clasula_original: str  # original clause text
-    problema_juridico: str  # identified legal problem
-    clausula_revisada: str  # revised clause text
-    # clausula_alterada: str  # (optional) track specific alterations if needed
+
+    numero_da_clausula: str
+    clasula_original: str
+    problema_juridico: str
+    clausula_revisada: str
 
 
 class PageReviewedOutput(BaseModel):
@@ -52,4 +52,5 @@ class PageReviewedOutput(BaseModel):
     Attributes:
         clauses (List[ReviewedClause]): List of clauses with review metadata.
     """
-    clauses: list[ReviewedClause]  # list of ReviewedClause models for this page
+
+    clauses: list[ReviewedClause]
