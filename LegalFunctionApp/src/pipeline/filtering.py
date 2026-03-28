@@ -8,7 +8,7 @@ to identify numbered clauses, group sub-items, and produce structured output.
 import json
 
 from src.utils.retry import safe_parse_with_retry
-from src.utils.token_tracker import TokenTracker
+from LegalFunctionApp.src.services.token_tracker import TokenTracker
 
 
 def filter_clauses_with_gpt4o(chunks, client, response_format, config):

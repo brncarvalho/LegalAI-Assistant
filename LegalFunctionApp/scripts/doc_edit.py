@@ -1,30 +1,25 @@
 # %%
 
+from LegalFunctionApp.models.models import PageOutput, PageReviewedOutput
+
+from src.config.load_config import get_search_credentials
 from src.llm.clients import (
-    get_openai_client,
+    get_ai_indexing_client,
     get_ai_search_client,
     get_model_config,
-    get_ai_indexing_client,
+    get_openai_client,
 )
 from src.pipeline.clause_extraction_and_processing import (
-    extract_contract_json,
     apply_page_overlap,
+    extract_contract_json,
     normalize_clause_numbers,
 )
 from src.pipeline.reviewing import (
-    review_clauses,
-    filter_clauses_with_gpt4o,
-    review_clauses_with_contract_context,
     create_original_and_revised_docs,
-    create_temp_index,
-    vectorize_and_upload,
     deduplicate_clauses,
+    filter_clauses_with_gpt4o,
+    review_clauses,
 )
-from src.utils.models import PageOutput, PageReviewedOutput
-import json
-import uuid
-
-from src.config.load_config import get_search_credentials
 
 # %%
 gpt_4o = get_openai_client("gpt_4o")

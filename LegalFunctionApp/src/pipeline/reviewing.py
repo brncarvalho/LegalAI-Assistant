@@ -21,7 +21,7 @@ from services.search import SearchService
 from config.settings import settings
 
 from src.utils.retry import safe_parse_with_retry
-from src.utils.token_tracker import TokenTracker
+from LegalFunctionApp.src.services.token_tracker import TokenTracker
 
 logger = logging.getLogger(__name__)
 

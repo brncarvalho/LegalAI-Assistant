@@ -15,6 +15,7 @@ from pathlib import Path
 
 import azure.durable_functions as df
 import azure.functions as func
+from LegalFunctionApp.models.models import PageOutput, PageReviewedOutput
 
 from src.config.load_config import get_model_config
 from src.config.settings import Settings
@@ -33,7 +34,6 @@ from src.pipeline.document_generation import create_original_and_revised_docs
 from src.pipeline.filtering import filter_clauses_with_gpt4o
 from src.pipeline.reviewing import review_clauses
 from src.services.blob_storage import BlobStorageService
-from src.utils.models import PageOutput, PageReviewedOutput
 
 logging.basicConfig(level=logging.INFO)
 
@@ -55,9 +55,7 @@ async def blob_start(blob: func.InputStream, starter: df.DurableOrchestrationCli
     filename = blob.name.split("/")[-1]
     logging.info("[blob_start] New PDF arrived: %s", filename)
 
-    instance_id = await starter.start_new(
-        "Orchestrator", client_input={"blob_name": filename}
-    )
+    instance_id = await starter.start_new("Orchestrator", client_input={"blob_name": filename})
     logging.info("[blob_start] Orchestration started: %s", instance_id)
 
 
@@ -84,7 +82,7 @@ def Orchestrator(context: df.DurableOrchestrationContext):
 
     # 1. Extract raw JSON from PDF
     raw_info = yield context.call_activity("ExtractAndSaveActivity", payload)
-    logging.info("[Orchestrator] Raw JSON written to blob: %s", raw_info['raw_blob'])
+    logging.info("[Orchestrator] Raw JSON written to blob: %s", raw_info["raw_blob"])
 
     extracted_blob = raw_info["raw_blob"]
     extracted_clauses_array = yield context.call_activity(
@@ -98,10 +96,7 @@ def Orchestrator(context: df.DurableOrchestrationContext):
         for i in range(0, len(extracted_clauses_array), chunk_size)
     ]
 
-    tasks = [
-        context.call_activity("FilterClausesActivity", chunk)
-        for chunk in extracted_chunks
-    ]
+    tasks = [context.call_activity("FilterClausesActivity", chunk) for chunk in extracted_chunks]
     partial_results = yield context.task_all(tasks)
 
     logging.info(
@@ -136,24 +131,17 @@ def Orchestrator(context: df.DurableOrchestrationContext):
         {"blob": filtered_blob, "container_name": "extracted-clauses"},
     )
 
-    logging.info(
-        "[Orchestrator] Downloaded %d clauses for review", len(clauses_array)
-    )
+    logging.info("[Orchestrator] Downloaded %d clauses for review", len(clauses_array))
 
     # Split into chunks for parallel review
     chunk_size = 5
-    chunks = [
-        clauses_array[i : i + chunk_size]
-        for i in range(0, len(clauses_array), chunk_size)
-    ]
+    chunks = [clauses_array[i : i + chunk_size] for i in range(0, len(clauses_array), chunk_size)]
 
     logging.info("[Orchestrator] Split into %d chunks of up to %d", len(chunks), chunk_size)
 
     # 4. Parallel review
     tasks = [
-        context.call_activity(
-            "ReviewClausesChunkActivity", {"chunk": chunk, "party": party}
-        )
+        context.call_activity("ReviewClausesChunkActivity", {"chunk": chunk, "party": party})
         for chunk in chunks
     ]
 
@@ -178,9 +166,7 @@ def Orchestrator(context: df.DurableOrchestrationContext):
     )
 
     # 5. Generate reviewed document
-    final_doc = yield context.call_activity(
-        "CreateReviewedDocumentActivity", merged_blob_info
-    )
+    final_doc = yield context.call_activity("CreateReviewedDocumentActivity", merged_blob_info)
 
     # Build usage metadata
     contract_name = Path(merged_blob_info["reviewed_blob"]).name.split(".", 1)[0]
@@ -245,9 +231,7 @@ def ExtractAndSaveActivity(payload: dict) -> dict:
     contract_json = extract_contract_json(doc_client, pdf_path, "layout")
     chunks = apply_page_overlap(contract_json, overlap_pages=2)
 
-    logging.info(
-        "[ExtractAndSaveActivity] Extracted and overlapped %d chunks", len(chunks)
-    )
+    logging.info("[ExtractAndSaveActivity] Extracted and overlapped %d chunks", len(chunks))
 
     raw_blob = blob_name.rsplit(".", 1)[0] + ".json"
     storage.upload_json("output", raw_blob, chunks)
@@ -298,9 +282,7 @@ def ReviewClausesChunkActivity(clauseschunk: dict) -> dict:
         chunk, client, search_client, PageReviewedOutput, model_cfg, party
     )
 
-    filtered_by_numbers = normalize_clause_numbers(
-        reviewed_clauses["reviewed_clauses"]
-    )
+    filtered_by_numbers = normalize_clause_numbers(reviewed_clauses["reviewed_clauses"])
 
     for page_key, page in filtered_by_numbers.items():
         for clause in page["clauses"]:
@@ -323,9 +305,7 @@ def CreateReviewedDocumentActivity(blobInfo: dict) -> dict:
     reviewed_data = storage.download_json("reviewed-clauses", reviewed_blob)
 
     tmp_dir = Path(tempfile.mkdtemp())
-    orig_path, rev_path = create_original_and_revised_docs(
-        reviewed_data, tmp_dir, reviewed_blob
-    )
+    orig_path, rev_path = create_original_and_revised_docs(reviewed_data, tmp_dir, reviewed_blob)
 
     for p in [orig_path, rev_path]:
         storage.upload_file("reviewed-documents", p.name, str(p))
