@@ -17,7 +17,8 @@ import json
 import logging
 
 import tiktoken
-from azure.search.documents.models import VectorizableTextQuery
+from services.search import SearchService
+from config.settings import settings
 
 from src.utils.retry import safe_parse_with_retry
 from src.utils.token_tracker import TokenTracker
@@ -62,26 +63,15 @@ def review_clauses(clauses, client, search_client, response_format, config, term
             continue
 
         # Retrieve similar reference clauses from Azure Search
-        retrieved_clauses = []
-        vector_query = VectorizableTextQuery(
-            text=clause["content"],
-            k_nearest_neighbors=5,
-            fields="text_vector",
+        search_service = SearchService(
+            ai_search_url=settings.azure_ai_search_endpoint,
+            index_name=settings.index_name,
+            ai_search_api_key=settings.azure_ai_search_api_key,
         )
 
-        results = list(
-            search_client.search(
-                search_text=None,
-                vector_queries=[vector_query],
-                select=["chunk"],
-                top=5,
-            )
-        )
+        retrieved_clauses = search_service.search(query=clause_content, limit=5)
 
-        for result in results:
-            retrieved_clauses.append(result["chunk"])
-
-        reference_clauses = "\n\n".join(retrieved_clauses)
+        reference_clauses = "\n\n".join(result.content for result in retrieved_clauses)
 
         prompt = f"""
         Você é um **advogado sênior** responsável por revisar cláusulas contratuais, utilizando exclusivamente um conjunto de **cláusulas de referência** previamente aprovadas e assinadas pelo Departamento Jurídico da empresa.

@@ -51,3 +51,12 @@ class Settings(BaseSettings):
     # ── Azure OpenAI Resource URL (for search vectorizer) ──────────
     # This was previously hardcoded in reviewing.py and indexing.py
     azure_openai_resource_url: str
+
+    index_name: str
+
+    api_version: str = "2024-12-01-preview"
+
+    openai_model: str = "gpt-4o"
+
+
+settings = Settings()
