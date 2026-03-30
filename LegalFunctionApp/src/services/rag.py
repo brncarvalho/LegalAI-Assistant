@@ -36,13 +36,13 @@ class RAGService:
             response_format=response_format,
         )
 
-    def _extract_clause(self, chunks: list[dict], termo: str):
+    def _extract_clause(self, chunks: list[dict]):
 
         filtered_clauses = {}
 
         i = 0
         for chunk in chunks:
-            prompt = CLAUSE_EXTRACTION_PROMPT.format(chunks=chunk["content"], termo=termo)
+            prompt = CLAUSE_EXTRACTION_PROMPT.format(chunks=chunk["content"])
             response = self._generate_completion(prompt, PageOutput)
 
             extract_tracker = self.tracker_service.track(response)
@@ -56,7 +56,7 @@ class RAGService:
             "usage": extract_tracker.usage,
         }
 
-    def _review_clause(self, clauses: str, limit: int, termo: str):
+    def _review_clause(self, clauses: list, termo: str):
 
         encoding = tiktoken.get_encoding("cl100k_base")
         list_of_reviewed_clauses = {}
@@ -77,7 +77,7 @@ class RAGService:
                 logging.warning("Clause exceeded token limit (%d tokens). Skipping.", len(tokens))
                 continue
 
-            context = self._run_queries(clause, limit, filter)
+            context = self._run_queries(clause)
             prompt = REVIEW_CLAUSE_PROMPT.format(
                 termo=termo, clause=clause, reference_clauses=context
             )

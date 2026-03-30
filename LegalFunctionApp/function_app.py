@@ -20,9 +20,7 @@ from LegalFunctionApp.models.models import PageOutput, PageReviewedOutput
 from src.config.load_config import get_model_config
 from src.config.settings import Settings
 from src.llm.clients import (
-    get_ai_search_client,
     get_document_intelligence_client,
-    get_openai_client,
 )
 from src.pipeline.clause_extraction_and_processing import (
     apply_page_overlap,
@@ -31,8 +29,7 @@ from src.pipeline.clause_extraction_and_processing import (
 )
 from src.pipeline.deduplication import deduplicate_clauses
 from src.pipeline.document_generation import create_original_and_revised_docs
-from src.pipeline.filtering import filter_clauses_with_gpt4o
-from src.pipeline.reviewing import review_clauses
+from src.services.rag import RAGService
 from src.services.blob_storage import BlobStorageService
 
 logging.basicConfig(level=logging.INFO)
@@ -247,11 +244,9 @@ def FilterClausesActivity(blobInfo: list) -> dict:
     """
     chunks = blobInfo
 
-    settings = _get_settings()
-    client = get_openai_client(settings, "gpt_4o")
-    model_cfg = get_model_config()["openai_models"]["gpt_4o"]
+    RAGService._extract_clause(chunks)
 
-    filtered = filter_clauses_with_gpt4o(chunks, client, PageOutput, model_cfg)
+    filtered = RAGService._extract_clause(chunks)
     clean_clauses = deduplicate_clauses(filtered)
 
     usage = filtered["usage"]
@@ -273,14 +268,7 @@ def ReviewClausesChunkActivity(clauseschunk: dict) -> dict:
         chunk = clauseschunk
         party = None
 
-    settings = _get_settings()
-    client = get_openai_client(settings, "gpt_4o")
-    search_client = get_ai_search_client(settings)
-    model_cfg = get_model_config()["openai_models"]["gpt_4o"]
-
-    reviewed_clauses = review_clauses(
-        chunk, client, search_client, PageReviewedOutput, model_cfg, party
-    )
+    reviewed_clauses = RAGService._review_clause(chunk, party)
 
     filtered_by_numbers = normalize_clause_numbers(reviewed_clauses["reviewed_clauses"])
 
