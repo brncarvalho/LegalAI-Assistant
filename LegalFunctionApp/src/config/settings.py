@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     api_version: str = "2024-12-01-preview"
 
     openai_model: str = "gpt-4o"
+    embedding_model: str = "text-embedding-ada-002"
 
 
 settings = Settings()
