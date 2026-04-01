@@ -15,10 +15,8 @@ from pathlib import Path
 
 import azure.durable_functions as df
 import azure.functions as func
-from LegalFunctionApp.models.models import PageOutput, PageReviewedOutput
 
-from src.config.load_config import get_model_config
-from src.config.settings import Settings
+from src.config.settings import settings
 from src.llm.clients import (
     get_document_intelligence_client,
 )
@@ -29,8 +27,10 @@ from src.pipeline.clause_extraction_and_processing import (
 )
 from src.pipeline.deduplication import deduplicate_clauses
 from src.pipeline.document_generation import create_original_and_revised_docs
-from src.services.rag import RAGService
 from src.services.blob_storage import BlobStorageService
+from src.services.rag import RAGService
+from src.services.search import SearchService
+from src.services.extract import ExtractionService
 
 logging.basicConfig(level=logging.INFO)
 
@@ -194,18 +194,6 @@ def Orchestrator(context: df.DurableOrchestrationContext):
 # This is dependency injection: the activity controls what it needs.
 
 
-def _get_settings() -> Settings:
-    """Create Settings from environment. Called per-activity, not at module level."""
-    return Settings()
-
-
-def _get_storage(settings: Settings | None = None) -> BlobStorageService:
-    """Create a BlobStorageService. Accepts Settings to avoid double-creation."""
-    if settings is None:
-        settings = _get_settings()
-    return BlobStorageService(settings.azure_web_jobs_storage)
-
-
 @df_app.activity_trigger(input_name="payload")
 def ExtractAndSaveActivity(payload: dict) -> dict:
     """
@@ -215,8 +203,7 @@ def ExtractAndSaveActivity(payload: dict) -> dict:
     blob_name = payload["blob_name"]
     logging.info("[ExtractAndSaveActivity] Start extracting '%s'", blob_name)
 
-    settings = _get_settings()
-    storage = _get_storage(settings)
+    storage = BlobStorageService(settings.azure_web_jobs_storage)
 
     pdf_bytes = storage.download_blob_bytes("contracts-container", blob_name)
     with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
@@ -224,8 +211,12 @@ def ExtractAndSaveActivity(payload: dict) -> dict:
         tmp.flush()
         pdf_path = tmp.name
 
-    doc_client = get_document_intelligence_client(settings)
-    contract_json = extract_contract_json(doc_client, pdf_path, "layout")
+    extract_doc_service = ExtractionService(
+        azure_ai_doc_intelligence_endpoint=settings.azure_ai_doc_intelligence_endpoint,
+        azure_ai_doc_intelligence_api_key=settings.azure_ai_doc_intelligence_api_key,
+    )
+
+    contract_json = extract_doc_service.extract_contract_json(pdf_path, "layout")
     chunks = apply_page_overlap(contract_json, overlap_pages=2)
 
     logging.info("[ExtractAndSaveActivity] Extracted and overlapped %d chunks", len(chunks))
@@ -244,9 +235,15 @@ def FilterClausesActivity(blobInfo: list) -> dict:
     """
     chunks = blobInfo
 
-    RAGService._extract_clause(chunks)
+    search_service = SearchService(
+        ai_search_url=settings.azure_ai_search_endpoint,
+        ai_search_api_key=settings.azure_ai_search_api_key,
+        index_name=settings.index_name,
+    )
 
-    filtered = RAGService._extract_clause(chunks)
+    rag_service = RAGService(search_service=search_service)
+
+    filtered = rag_service._extract_clause(chunks)
     clean_clauses = deduplicate_clauses(filtered)
 
     usage = filtered["usage"]
@@ -268,7 +265,15 @@ def ReviewClausesChunkActivity(clauseschunk: dict) -> dict:
         chunk = clauseschunk
         party = None
 
-    reviewed_clauses = RAGService._review_clause(chunk, party)
+    search_service = SearchService(
+        ai_search_url=settings.azure_ai_search_endpoint,
+        ai_search_api_key=settings.azure_ai_search_api_key,
+        index_name=settings.index_name,
+    )
+
+    rag_service = RAGService(search_service=search_service)
+
+    reviewed_clauses = rag_service._review_clause(chunk, party)
 
     filtered_by_numbers = normalize_clause_numbers(reviewed_clauses["reviewed_clauses"])
 
@@ -289,7 +294,7 @@ def CreateReviewedDocumentActivity(blobInfo: dict) -> dict:
     reviewed_blob = blobInfo["reviewed_blob"]
     logging.info("[CreateReviewedDocumentActivity] Start, blob: %s", reviewed_blob)
 
-    storage = _get_storage()
+    storage = BlobStorageService(settings.azure_web_jobs_storage)
     reviewed_data = storage.download_json("reviewed-clauses", reviewed_blob)
 
     tmp_dir = Path(tempfile.mkdtemp())
@@ -306,7 +311,7 @@ def CreateReviewedDocumentActivity(blobInfo: dict) -> dict:
 @df_app.activity_trigger(input_name="blobInfo")
 def DownloadJsonArrayActivity(blobInfo: dict) -> list:
     """Download a JSON blob and parse it into a Python list or dict."""
-    storage = _get_storage()
+    storage = BlobStorageService(settings.azure_web_jobs_storage)
     return storage.download_json(blobInfo["container_name"], blobInfo["blob"])
 
 
@@ -314,7 +319,7 @@ def DownloadJsonArrayActivity(blobInfo: dict) -> list:
 def SaveJsonArrayActivity(blobInfo: dict) -> dict:
     """Save a Python dict/list as a JSON blob."""
     blob_name = f"{blobInfo['base_name']}.reviewed.full.json"
-    storage = _get_storage()
+    storage = BlobStorageService(settings.azure_web_jobs_storage)
     storage.upload_json(blobInfo["container_name"], blob_name, blobInfo["map"])
     return {"reviewed_blob": blob_name}
 
@@ -325,7 +330,7 @@ def SaveUsageActivity(info: dict) -> dict:
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d-%H-%M")
 
-    storage = _get_storage()
+    storage = BlobStorageService(settings.azure_web_jobs_storage)
     blob_name = f"{info['base_name']}-{timestamp}-log-usage.json"
     storage.upload_json("usage-metrics", blob_name, info)
     return {"blob_name": blob_name}

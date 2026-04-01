@@ -12,9 +12,9 @@ from services.token_tracker import TokenTracker
 
 
 class RAGService:
-    def __init__(self, search_service: SearchService, tracker: TokenTracker):
+    def __init__(self, search_service: SearchService):
         self.search_service = search_service
-        self.tracker_service = tracker
+        self.tracker_service = TokenTracker()
         self.client = AzureOpenAI(
             api_version=settings.api_version,
             azure_endpoint=settings.azure_openai_endpoint,
