@@ -9,7 +9,7 @@ from src.llm.clients import (
     get_model_config,
     get_openai_client,
 )
-from src.pipeline.clause_extraction_and_processing import (
+from LegalFunctionApp.src.utils.clause_extraction_and_processing import (
     apply_page_overlap,
     extract_contract_json,
     normalize_clause_numbers,

@@ -5,7 +5,7 @@ Merges overlapping clauses that appear across multiple page chunks
 (due to page overlap in the extraction phase).
 """
 
-from src.pipeline.clause_extraction_and_processing import normalize_clause_number
+from LegalFunctionApp.src.utils.clause_extraction_and_processing import normalize_clause_number
 
 
 def deduplicate_clauses(extracted_pages: dict) -> list[dict]:
@@ -53,7 +53,4 @@ def deduplicate_clauses(extracted_pages: dict) -> list[dict]:
                 if len(norm_content) > len(existing_norm):
                     consolidated[key] = raw_content
 
-    return [
-        {"clause_number": num, "content": consolidated[num]}
-        for num in clause_order
-    ]
+    return [{"clause_number": num, "content": consolidated[num]} for num in clause_order]

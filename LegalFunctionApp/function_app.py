@@ -15,22 +15,18 @@ from pathlib import Path
 
 import azure.durable_functions as df
 import azure.functions as func
-
-from src.config.settings import settings
-from src.llm.clients import (
-    get_document_intelligence_client,
-)
-from src.pipeline.clause_extraction_and_processing import (
+from LegalFunctionApp.src.utils.clause_extraction_and_processing import (
     apply_page_overlap,
-    extract_contract_json,
     normalize_clause_numbers,
 )
-from src.pipeline.deduplication import deduplicate_clauses
+from LegalFunctionApp.src.utils.deduplication import deduplicate_clauses
+
+from src.config.settings import settings
 from src.pipeline.document_generation import create_original_and_revised_docs
 from src.services.blob_storage import BlobStorageService
+from src.services.extract import ExtractionService
 from src.services.rag import RAGService
 from src.services.search import SearchService
-from src.services.extract import ExtractionService
 
 logging.basicConfig(level=logging.INFO)
 
