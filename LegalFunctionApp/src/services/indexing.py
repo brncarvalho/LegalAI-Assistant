@@ -18,7 +18,7 @@ from azure.search.documents.indexes.models import (
     VectorSearchProfile,
 )
 
-from config.settings import settings
+from src.config.settings import settings
 
 
 class IndexingService:
@@ -28,7 +28,7 @@ class IndexingService:
             credential=AzureKeyCredential(settings.azure_ai_search_api_key),
         )
 
-    def create_clause_index(self, index_name):
+    def create_clause_index(self, index_name: str) -> str:
         """
         Create or update the Azure Cognitive Search index for clause prototypes.
 

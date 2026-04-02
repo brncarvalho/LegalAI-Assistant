@@ -35,7 +35,7 @@ class BlobStorageService:
         container = self._client.get_container_client(container_name)
         return container.download_blob(blob_name).readall()
 
-    def download_json(self, container_name: str, blob_name: str):
+    def download_json(self, container_name: str, blob_name: str) -> dict | list:
         """Download a JSON blob and parse it into a Python object."""
         data = self.download_blob_bytes(container_name, blob_name)
         return json.loads(data)

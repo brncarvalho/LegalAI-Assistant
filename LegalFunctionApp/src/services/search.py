@@ -1,4 +1,7 @@
+import logging
+
 from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import AzureError
 from azure.search.documents import SearchClient
 from azure.search.documents.models import VectorizableTextQuery
 
@@ -14,7 +17,7 @@ class SearchService:
         )
         self.index_name = index_name
 
-    def search(self, query: str, limit: int = 5):
+    def search(self, query: str, limit: int = 5) -> SearchResponse:
 
         vector_query = VectorizableTextQuery(
             text=query,
@@ -22,14 +25,18 @@ class SearchService:
             fields="text_vector",
         )
 
-        results = list(
-            self.azure_ai_search.search(
-                search_text=None,
-                vector_queries=[vector_query],
-                select=["chunk"],
-                top=limit,
+        try:
+            results = list(
+                self.azure_ai_search.search(
+                    search_text=None,
+                    vector_queries=[vector_query],
+                    select=["chunk"],
+                    top=limit,
+                )
             )
-        )
+        except AzureError as e:
+            logging.error("Azure Search query failed for index '%s': %s", self.index_name, e)
+            raise
 
         retrieved_clauses = [
             SearchResult(content=result["chunk"], score=result["@search.score"])

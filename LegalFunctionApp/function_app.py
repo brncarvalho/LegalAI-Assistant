@@ -15,12 +15,12 @@ from pathlib import Path
 
 import azure.durable_functions as df
 import azure.functions as func
-from LegalFunctionApp.src.services.document_generation import create_original_and_revised_docs
-from LegalFunctionApp.src.utils.chunking import (
+from src.services.document_generation import DocumentService
+from src.utils.chunking import (
     apply_page_overlap,
     normalize_clause_numbers,
 )
-from LegalFunctionApp.src.utils.deduplication import deduplicate_clauses
+from src.utils.deduplication import deduplicate_clauses
 
 from src.config.settings import settings
 from src.services.blob_storage import BlobStorageService
@@ -294,7 +294,8 @@ def CreateReviewedDocumentActivity(blobInfo: dict) -> dict:
     reviewed_data = storage.download_json("reviewed-clauses", reviewed_blob)
 
     tmp_dir = Path(tempfile.mkdtemp())
-    orig_path, rev_path = create_original_and_revised_docs(reviewed_data, tmp_dir, reviewed_blob)
+    doc_service = DocumentService()
+    orig_path, rev_path = doc_service.create_original_and_revised_docs(reviewed_data, tmp_dir, reviewed_blob)
 
     for p in [orig_path, rev_path]:
         storage.upload_file("reviewed-documents", p.name, str(p))

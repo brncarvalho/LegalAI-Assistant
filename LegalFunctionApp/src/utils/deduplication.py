@@ -5,7 +5,7 @@ Merges overlapping clauses that appear across multiple page chunks
 (due to page overlap in the extraction phase).
 """
 
-from LegalFunctionApp.src.utils.clause_extraction_and_processing import normalize_clause_number
+from src.utils.chunking import normalize_clause_number
 
 
 def deduplicate_clauses(extracted_pages: dict) -> list[dict]:

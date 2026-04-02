@@ -4,7 +4,7 @@ Text embedding generation using Azure OpenAI.
 
 from openai import AzureOpenAI
 
-from config.settings import settings
+from src.config.settings import settings
 
 
 class EmbeddingService:
@@ -15,7 +15,7 @@ class EmbeddingService:
             api_key=settings.azure_openai_api_key,
         )
 
-    def generate_embedding(self, text: str):
+    def generate_embedding(self, text: str) -> list[float]:
         """
         Generate an embedding vector for the given text.
 

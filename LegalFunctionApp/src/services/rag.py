@@ -2,13 +2,15 @@ import json
 import logging
 
 import tiktoken
-from openai import AzureOpenAI
+from openai import AzureOpenAI, OpenAIError
 
-from config.prompts import CLAUSE_EXTRACTION_PROMPT, REVIEW_CLAUSE_PROMPT
-from config.settings import settings
+from src.config.prompts import CLAUSE_EXTRACTION_PROMPT, REVIEW_CLAUSE_PROMPT
+from src.config.settings import settings
 from models.rag import PageOutput, PageReviewedOutput
-from services.search import SearchService
-from services.token_tracker import TokenTracker
+from src.services.search import SearchService
+from src.services.token_tracker import TokenTracker
+
+MAX_EMBEDDING_TOKENS = 8191
 
 
 class RAGService:
@@ -21,22 +23,26 @@ class RAGService:
             api_key=settings.azure_openai_api_key,
         )
 
-    def _run_queries(self, query: str, limit: int = 5):
+    def _run_queries(self, query: str, limit: int = 5) -> str:
         all_results = []
         search_results = self.search_service.search(query, limit)
         all_results.extend([result.text for result in search_results.results])
         return "\n\n".join(all_results)
 
-    def generate_completion(self, prompt: str, response_format=None):
+    def _generate_completion(self, prompt: str, response_format=None):
 
-        return self.client.chat.completions.create(
-            model=settings.openai_model,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0,
-            response_format=response_format,
-        )
+        try:
+            return self.client.beta.chat.completions.parse(
+                model=settings.openai_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+                response_format=response_format,
+            )
+        except OpenAIError as e:
+            logging.error("LLM completion failed: %s", e)
+            raise
 
-    def _extract_clause(self, chunks: list[dict]):
+    def _extract_clause(self, chunks: list[dict]) -> dict:
 
         filtered_clauses = {}
 
@@ -56,7 +62,7 @@ class RAGService:
             "usage": extract_tracker.usage,
         }
 
-    def _review_clause(self, clauses: list, termo: str):
+    def _review_clause(self, clauses: list, termo: str) -> dict:
 
         encoding = tiktoken.get_encoding("cl100k_base")
         list_of_reviewed_clauses = {}
@@ -73,7 +79,7 @@ class RAGService:
             clause_number = clause_number.strip()
 
             tokens = encoding.encode(clause_content)
-            if len(tokens) > 8191:
+            if len(tokens) > MAX_EMBEDDING_TOKENS:
                 logging.warning("Clause exceeded token limit (%d tokens). Skipping.", len(tokens))
                 continue
 
