@@ -1,6 +1,6 @@
-# Norma - AI-Powered Legal Contract Review
+# Legal AI Assistant - AI-Powered Contract Review
 
-Norma is a serverless AI pipeline that automatically reviews legal contract clauses against a curated knowledge base of previously approved contracts. It identifies legal misalignments, suggests minimal corrections, and generates annotated Word documents — reducing manual legal review time from hours to minutes.
+Legal AI Assistant is a serverless AI pipeline that automatically reviews legal contract clauses against a curated knowledge base of previously approved contracts. It identifies legal misalignments, suggests minimal corrections, and generates annotated Word documents — reducing manual legal review time from hours to minutes.
 
 Built for a real corporate legal department, the system integrates with Microsoft 365 (SharePoint, Teams, Power Automate) to provide an end-to-end workflow from document upload to reviewed output.
 
@@ -32,7 +32,7 @@ Corporate legal teams spend significant time manually reviewing contracts clause
 
 ## Solution Overview
 
-Norma automates this review by combining **Retrieval-Augmented Generation (RAG)** with Azure's serverless infrastructure:
+Legal AI Assistant automates this review by combining **Retrieval-Augmented Generation (RAG)** with Azure's serverless infrastructure:
 
 1. A contract PDF is uploaded to SharePoint
 2. Power Automate sends it to Azure Blob Storage
@@ -80,7 +80,7 @@ The key principle is **minimal intervention** — the AI doesn't rewrite clauses
 
 ## Knowledge Base Strategy
 
-The knowledge base is the core of Norma's review quality. Instead of relying on generic legal knowledge, it uses **real contracts that were previously reviewed, approved, and signed** by the company's legal department.
+The knowledge base is the core of the system's review quality. Instead of relying on generic legal knowledge, it uses **real contracts that were previously reviewed, approved, and signed** by the company's legal department.
 
 ### How it was built
 
@@ -104,7 +104,7 @@ The goal is never to replace the clause text, but to **infer corrections in ligh
 
 ## Microsoft 365 Integration
 
-Norma is designed to fit into the existing corporate workflow without requiring users to learn new tools.
+The system is designed to fit into the existing corporate workflow without requiring users to learn new tools.
 
 ### SharePoint
 
@@ -137,7 +137,7 @@ Two dedicated flows handle the integration:
 | **Embeddings** | Azure OpenAI (text-embedding-ada-002) | Clause vectorization for semantic search |
 | **Storage** | Azure Blob Storage | PDF input, JSON intermediaries, .docx output |
 | **Document Gen** | python-docx + lxml | Word documents with redline annotations |
-| **Validation** | Pydantic v2 | Structured output schemas, config validation |
+| **Data Validation** | Pydantic v2 | Structured output schemas, config validation |
 | **Integration** | Power Automate + SharePoint + Teams | End-to-end corporate workflow |
 | **Chatbot** | Microsoft Copilot Studio | Single-clause review via Teams |
 
@@ -222,7 +222,7 @@ Token usage metrics (prompt, completion, total) are recorded per contract for co
 
 ## Output
 
-For each processed contract, Norma produces:
+For each processed contract, the system produces:
 
 | Output | Format | Description |
 |--------|--------|-------------|

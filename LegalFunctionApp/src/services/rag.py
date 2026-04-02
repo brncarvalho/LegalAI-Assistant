@@ -4,9 +4,9 @@ import logging
 import tiktoken
 from openai import AzureOpenAI, OpenAIError
 
+from models.rag import PageOutput, PageReviewedOutput
 from src.config.prompts import CLAUSE_EXTRACTION_PROMPT, REVIEW_CLAUSE_PROMPT
 from src.config.settings import settings
-from models.rag import PageOutput, PageReviewedOutput
 from src.services.search import SearchService
 from src.services.token_tracker import TokenTracker
 

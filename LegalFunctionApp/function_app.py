@@ -1,5 +1,5 @@
 """
-Azure Durable Functions orchestration for Norma legal contract review.
+Azure Durable Functions orchestration for legal contract review.
 
 This is the entry point. It creates Settings once and passes dependencies
 (clients, config) down to pipeline functions — never at module level.

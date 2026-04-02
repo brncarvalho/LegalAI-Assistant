@@ -19,7 +19,7 @@ from azure.storage.blob import BlobServiceClient
 
 class BlobStorageService:
     """
-    Simplified interface to Azure Blob Storage for the Norma pipeline.
+    Simplified interface to Azure Blob Storage for the legal review pipeline.
 
     Usage:
         storage = BlobStorageService(connection_string)

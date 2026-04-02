@@ -17,7 +17,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     """
-    All external configuration for the Norma application.
+    All external configuration for the Legal AI Assistant application.
 
     Pydantic automatically maps UPPER_CASE env vars to lower_case fields.
     Example: env var AZURE_OPENAI_ENDPOINT -> settings.azure_openai_endpoint
