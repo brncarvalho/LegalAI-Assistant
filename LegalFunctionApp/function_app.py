@@ -15,6 +15,7 @@ from pathlib import Path
 
 import azure.durable_functions as df
 import azure.functions as func
+from LegalFunctionApp.src.services.document_generation import create_original_and_revised_docs
 from LegalFunctionApp.src.utils.clause_extraction_and_processing import (
     apply_page_overlap,
     normalize_clause_numbers,
@@ -22,7 +23,6 @@ from LegalFunctionApp.src.utils.clause_extraction_and_processing import (
 from LegalFunctionApp.src.utils.deduplication import deduplicate_clauses
 
 from src.config.settings import settings
-from src.pipeline.document_generation import create_original_and_revised_docs
 from src.services.blob_storage import BlobStorageService
 from src.services.extract import ExtractionService
 from src.services.rag import RAGService

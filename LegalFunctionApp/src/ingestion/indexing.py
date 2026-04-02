@@ -4,9 +4,8 @@ Azure Cognitive Search index management.
 Creates indexes, uploads prototype clauses, and performs similarity searches.
 """
 
-import uuid
-
 from azure.core.credentials import AzureKeyCredential
+from azure.search.documents import SearchClient
 from azure.search.documents.indexes import SearchIndexClient
 from azure.search.documents.indexes.models import (
     AzureOpenAIVectorizer,
@@ -18,7 +17,6 @@ from azure.search.documents.indexes.models import (
     VectorSearch,
     VectorSearchProfile,
 )
-from pandas import DataFrame
 
 from config.settings import settings
 
@@ -77,23 +75,11 @@ class IndexingService:
         result = self.client.create_or_update_index(index)
         return result.name
 
-    def upload_prototype_clauses(self, df: DataFrame):
-        """
-        Upload prototype clauses from a DataFrame into the search index.
-
-        Parameters:
-            search_client: An initialized SearchClient.
-            df: DataFrame with 'cluster' and 'content' columns.
-        """
-        documents = []
-        for _, row in df.iterrows():
-            documents.append(
-                {
-                    "id": str(uuid.uuid4()),
-                    "cluster_id": int(row["cluster"]),
-                    "clause": row["content"],
-                }
-            )
-
-        result = self.client.upload_documents(documents=documents)
+    def upload_documents(self, index_name: str, documents: list[dict]) -> int:
+        search_client = SearchClient(
+            endpoint=settings.azure_ai_search_endpoint,
+            index_name=index_name,
+            credential=AzureKeyCredential(settings.azure_ai_search_api_key),
+        )
+        result = search_client.upload_documents(documents=documents)
         return len(result)
