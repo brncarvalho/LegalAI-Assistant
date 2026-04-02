@@ -1,12 +1,13 @@
-import win32com.client as win32
-from pathlib import Path
-import tempfile
-import shutil
-from rapidfuzz import process, fuzz
-import os
 import json
+import os
+import shutil
+import tempfile
+from pathlib import Path
+
 import pythoncom
+import win32com.client as win32
 from azure.storage.blob import BlobServiceClient
+from rapidfuzz import fuzz, process
 
 
 def redline_contract(reviewed_data: dict, original_doc: Path, out_doc: Path):
@@ -19,12 +20,10 @@ def redline_contract(reviewed_data: dict, original_doc: Path, out_doc: Path):
     doc = wd.Documents.Open(str(tmp_clone))
     doc.TrackRevisions = False
 
-    candidate_map = get_all_paragraphs_robust(doc)
+    candidate_map = get_all_paragraphs(doc)
 
     search_corpus = {
-        k: v.Range.Text.strip()
-        for k, v in candidate_map.items()
-        if len(v.Range.Text.strip()) > 10
+        k: v.Range.Text.strip() for k, v in candidate_map.items() if len(v.Range.Text.strip()) > 10
     }
 
     print(f"--- Indexed {len(search_corpus)} text blocks from doc ---")
@@ -65,9 +64,7 @@ def redline_contract(reviewed_data: dict, original_doc: Path, out_doc: Path):
             )
             continue
 
-        print(
-            f"[HIT] {score:.1f}% Match found for {cl.get('numero_da_clausula')} - Replacing..."
-        )
+        print(f"[HIT] {score:.1f}% Match found for {cl.get('numero_da_clausula')} - Replacing...")
 
         rng = target_para.Range
 
@@ -104,7 +101,7 @@ def redline_contract(reviewed_data: dict, original_doc: Path, out_doc: Path):
     print(f"✓ Process Complete. Saved to: {out_doc}")
 
 
-def get_all_paragraphs_robust(doc):
+def get_all_paragraphs(doc):
     """
     Crawls the MAIN BODY, ALL TABLES, and ALL SHAPES (Text Boxes).
     Returns a dict: { unique_id : ParagraphObject }
@@ -130,95 +127,3 @@ def get_all_paragraphs_robust(doc):
                     counter += 1
 
     return candidates
-
-
-class AzureWordProcessor:
-    def __init__(self, connection_string):
-        self.blob_service_client = BlobServiceClient.from_connection_string(
-            connection_string
-        )
-
-    def download_to_temp(self, container_name, blob_name, suffix=".docx"):
-        """Downloads a blob to a local temp file and returns the Path object."""
-
-        tf = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-        temp_path = Path(tf.name)
-        tf.close()
-
-        print(f"⬇️ Downloading {blob_name} to {temp_path}...")
-
-        blob_client = self.blob_service_client.get_blob_client(
-            container=container_name, blob=blob_name
-        )
-
-        with open(temp_path, "wb") as file:
-            download_stream = blob_client.download_blob()
-            file.write(download_stream.readall())
-
-        return temp_path
-
-    def upload_from_temp(self, local_path, container_name, blob_name):
-        """Uploads a local file to Azure Blob."""
-        print(f"⬆️ Uploading result to {container_name}/{blob_name}...")
-
-        blob_client = self.blob_service_client.get_blob_client(
-            container=container_name, blob=blob_name
-        )
-
-        with open(local_path, "rb") as data:
-            blob_client.upload_blob(data, overwrite=True)
-
-    def get_json_data(self, container_name, blob_name):
-        """Downloads and parses a JSON blob directly into a Python dict."""
-        blob_client = self.blob_service_client.get_blob_client(
-            container=container_name, blob=blob_name
-        )
-        json_stream = blob_client.download_blob().readall()
-        return json.loads(json_stream)
-
-
-def run_redline_pipeline(
-    conn_string: str,
-    json_container: str,
-    json_blob: str,
-    doc_container: str,
-    doc_blob: str,
-    output_container: str,
-    output_blob_name: str,
-):
-    processor = AzureWordProcessor(conn_string)
-
-    print("--- Fetching Review Data ---")
-    reviewed_data = processor.get_json_data(json_container, json_blob)
-
-    original_temp_path = processor.download_to_temp(
-        doc_container, doc_blob, suffix=".docx"
-    )
-
-    out_temp_path = Path(tempfile.gettempdir()) / f"redline_{os.urandom(4).hex()}.docx"
-
-    try:
-        pythoncom.CoInitialize()
-
-        print("--- Starting Redline Process ---")
-
-        redline_contract(
-            reviewed_data=reviewed_data,
-            original_doc=original_temp_path.resolve(),
-            out_doc=out_temp_path.resolve(),
-        )
-
-        processor.upload_from_temp(out_temp_path, output_container, output_blob_name)
-        print("Pipeline Success!")
-
-    except Exception as e:
-        print(f"Error: {e}")
-        raise e
-
-    finally:
-        if original_temp_path.exists():
-            os.remove(original_temp_path)
-        if out_temp_path.exists():
-            os.remove(out_temp_path)
-
-        pythoncom.CoUninitialize()

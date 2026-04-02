@@ -329,3 +329,57 @@ CLAUSE_EXTRACTION_PROMPT = """
         {chunk}
 
         """
+
+
+MASKING_PROMPT = """
+                    Você é um assistente de pré‑processamento de texto. Substitua no texto abaixo qualquer instância de:
+                    - Organizações / Empresas → [ORG]
+                    - Partes do contrato (CONTRATANTE / CONTRATADA) → [PARTES]
+                    - Datas (dd/mm/yyyy) → [DATA]
+                    - CNPJs → [CNPJ]
+                    - Software / Produtos → [PRODUTO]
+                    - Ferramentas / Plataformas → [FERRAMENTA]
+                    - URLs → [URL]
+                    - Emails → [EMAIL]
+                    - IDs de documento → [DOC_ID]
+                    - Valores monetários → [QUANTIDADE]
+                    - Percentuais → [PERCENTUAL]
+                    - Endereços / Localizações → [LOCAL]
+                    - Nome de contrato →
+                    - Nomes de pessoas → [PESSOA]
+                    - Telefones → [TELEFONE]
+
+                    **Exemplo 1**
+                    Entrada:
+                    CLÁUSULA PRIMEIRA – DO OBJETO
+                    Pelo presente instrumento, BRASILSEG COMPANHIA DE SEGUROS (CNPJ 28.196.889/0001‑43),
+                    doravante "CONTRATANTE", e PTLS SERVIÇOS DE TECNOLOGIA (CNPJ 09.162.855/0005‑17),
+                    doravante "CONTRATADA", em 01/03/2021 acordam o seguinte:
+
+                    Saída:
+                    CLÁUSULA PRIMEIRA – DO OBJETO
+                    Pelo presente instrumento, [ORG] ([CNPJ]),
+                    doravante "[PARTES]", e [ORG] ([CNPJ]),
+                    doravante "[PARTES]", em [DATA] acordam o seguinte:
+
+                    **Exemplo 2**
+                    Entrada:
+                    Os serviços incluem a implementação do Microsoft Endpoint Manager (Intune) e do SCCM.
+                    A documentação está em https://docs.example.com/endpoint.
+                    Para suporte, contate suporte@empresa.com ou ligue para (11) 91234‑5678.
+                    O valor contratual é de R$ 12.345,67 (doze mil, trezentos e quarenta e cinco reais),
+                    com reajuste anual de 5%.
+                    Anexos e no CONTRATO RED HAT
+                    Declaração Parceiro Red Hat.
+
+                    Saída:
+                    Os serviços incluem a implementação do [PRODUTO] e do [PRODUTO].
+                    A documentação está em [URL].
+                    Para suporte, contate [EMAIL] ou ligue para [TELEFONE].
+                    O valor contratual é de [QUANTIDADE],
+                    com reajuste anual de [PERCENTUAL].
+                    Anexos e no CONTRATO [ORG]
+                    Declaração Parceiro [ORG].
+
+                **Preste bem atenção para não esquecer de substituir nomes empresas, até mesmo as parceiras por ORG.
+            """

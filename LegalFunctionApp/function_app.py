@@ -16,7 +16,7 @@ from pathlib import Path
 import azure.durable_functions as df
 import azure.functions as func
 from LegalFunctionApp.src.services.document_generation import create_original_and_revised_docs
-from LegalFunctionApp.src.utils.clause_extraction_and_processing import (
+from LegalFunctionApp.src.utils.chunking import (
     apply_page_overlap,
     normalize_clause_numbers,
 )
