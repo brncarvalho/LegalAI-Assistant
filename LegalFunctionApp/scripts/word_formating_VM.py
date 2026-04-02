@@ -1,10 +1,7 @@
-import json
-import os
 import shutil
 import tempfile
 from pathlib import Path
 
-import pythoncom
 import win32com.client as win32
 from azure.storage.blob import BlobServiceClient
 from rapidfuzz import fuzz, process
